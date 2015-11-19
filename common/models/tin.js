@@ -52,17 +52,28 @@ module.exports = function(Tin) {
     if(this.invitados.indexOf(accountId) != -1){
       return callback('El usuario ya ha sido invitado anteriormente');
     }
-/*    pubnub.subscribe({
-      channel: accountId,
-      message: function(m){console.log(m)}
-    });*/
     pubnub.publish({
         channel: accountId,
         message: {"INVITE":"Has sido invitado al bote " + this.name},
         callback : function(m){console.log(m)}
     });
     this.invitados.push(accountId);
-    this.save(callback);
+
+    var bote = this;
+    Account.findById(accountId,function(err,account){
+      console.log('account: ', account);
+      bote.movements.create(
+        {
+          "description": "El usuario " + account.username + " ha sido invitado al bote",
+          "tinId": this.id
+        },
+        function(err, movement){
+          if(err){
+            return callback(err);
+          }
+          bote.save(callback);
+        });
+    });
   };
 
 
@@ -79,18 +90,6 @@ module.exports = function(Tin) {
     //console.log("join",this,arguments);
     callback = callback || utils.createCallback();
     // TODO implement me
-    app.models.Movement.create(
-      {
-        "amount": {
-          "value": 20,
-          "currency": "EUR",
-        },
-        "description": "El usuraio " + accountId + " se ha unido al bote " + this.id + " con una aportacion de " + this.amount.value + "EUR.",
-        "tinId": this.id
-      }
-    ).then(function(movement){
-    }
-    );
     var index = this.invitados.indexOf(accountId);
     if( index == -1){
       return callback('El usuario no ha sido invitado a este bote');
@@ -104,19 +103,30 @@ module.exports = function(Tin) {
     this.balance = this.balance || 0;
     this.invitados.splice(index,1);
     this.balance = this.balance + this.amount.value;
-    var self = this;
+
+
+    var bote = this;
     Account.findById(accountId,function(err,account){
-      console.log('account', account);
-      return self.members.add(account,function(err){
-        if (err){
-          console.log('pete creacion de miembro',err);
-          return callback(err);
-        } else {
-          console.log('ok creacion de miembro');
-          return self.save(callback);        
-        }
-      });
+      console.log('account: ', account);
+      bote.movements.create(
+        {
+          "description": "El usuario " + account.username + " se ha unido al bote",
+          "tinId": this.id
+        },
+        function(err, movement){
+          if(err){
+            return callback(err);
+          }
+          return bote.members.add(account,function(err){
+            if (err){
+              console.log('pete creacion de miembro',err);
+              return callback(err);
+            } else {
+              return bote.save(callback);
+            }
+        });
     });
+  });
   };
 
 
@@ -133,33 +143,35 @@ module.exports = function(Tin) {
     //console.log("leave",this,arguments);
     callback = callback || utils.createCallback();
     // TODO implement me
-    app.models.Movement.create(
-      {
-        "description": "El usuraio " + accountId + " ha dejado el bote " + this.id,
-        "tinId": this.id
-      }
-    ).then(function(movement){
-    }
-    );
     pubnub.publish({
         channel: this.id,
         message: {"JOIN":"El usuario " + accountId + " ha dejado el bote "  + this.name},
         callback : function(m){console.log(m)}
     });
 
-    var self = this;
+    var bote = this;
     Account.findById(accountId,function(err,account){
-      return self.members.remove(account,function(err){
-        if (err){
-          console.log('pete eliminacion de miembro',err);
-          return callback(err);
-        } else {
-          console.log('ok eliminación de miembro');
-          return self.save(callback);        
-        }
-      });
+      console.log('account: ', account);
+      bote.movements.create(
+        {
+          "description": "El usuario " + account.username + " ha dejado el bote",
+          "tinId": this.id
+        },
+        function(err, movement){
+          if(err){
+            return callback(err);
+          }
+          return bote.members.remove(account,function(err){
+            if (err){
+              console.log('pete eliminacion de miembro',err);
+              return callback(err);
+            } else {
+              console.log('ok eliminación de miembro');
+              return bote.save(callback);        
+            }
+          });
+        });
     });
-
   };
 
 
@@ -184,29 +196,79 @@ module.exports = function(Tin) {
             return callback(err);
           }
           else{
-            app.models.Movement.create(
-              {
+            bote.movements.create(
+            {
                 "amount": {
                   "value": saldoARetornar,
                   "currency": "EUR",
                 },
-                "description": "El usuario " + miembro.id + " ha recibido una devolución por la disolución del bote " + bote.id,
-                "tinId": bote.id
-              }
-            ).then(function(movement){});
+              "description": "El usuario " + miembro.username + " ha recibido una devolución de " + saldoARetornar + " por la disolución del bote",
+              "tinId": this.id
+            },
+            function(err, movement){
+              if(err){
+                return callback(err);
+              }            
+            });
           }
         });
-      };
+      }
+      bote.balance = 0;
+      bote.disolved = true;
       console.log('Se ha eliminado el bote ', bote.id);
       pubnub.publish({
           channel: bote.id,
           message: {"DISOLVE":"El bote " + bote.id + " ha sido disuelto"},
           callback : function(m){console.log(m)}
       });
-      bote.balance = 0;
-      bote.disolved = true;
       return bote.save(callback);
     });
   };
+
+
+
+  Tin.remoteMethod('pay',{
+    isStatic:false,
+    description:'Pay a bill.',
+    accepts:[
+      {arg: 'accountId', type: 'string', description: 'The account id of the  user to leave the Tin.',http: {source: 'query' }},
+      {arg: 'amount', type: 'string', description: 'The amount of the bill.',http: {source: 'query' }},
+      {arg: 'description', type: 'string', description: 'The description of the payment.',http: {source: 'query' }}
+    ],
+    http:{verb:'post'}
+  });
+  Tin.prototype.pay=function(accountId, amount, description, callback){
+    callback = callback || utils.createCallback();
+    // TODO implement me
+    var bote = this; 
+    if(amount < bote.balance){
+      bote.balance = bote.balance - amount;
+      bote.movements.create(
+        {
+          "amount": {
+            "value": amount,
+            "currency": "EUR",
+          },
+          "description": "El usuario " + accountId + " ha realizado el siguiente pago: " + description,
+          "tinId": this.id
+        },
+        function(err, movement){
+          if(err){
+            return callback(err);
+          }
+        });
+
+      pubnub.publish({
+          channel: bote.id,
+          message: {"PAYMENT":"El usuario " + accountId + " ha realizado un pago de " + amount + " - " + description},
+          callback : function(m){console.log(m)}
+      });
+      return bote.save(callback);
+    }
+    else{
+      return callback("Saldo insuficiente para realizar el pago");
+    }
+  };
+
 
 };
