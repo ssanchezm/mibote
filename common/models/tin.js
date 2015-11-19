@@ -1,5 +1,10 @@
 var utils = require('../../server/util');
 var app = require('../../server/server'); 
+var pubnub = require("pubnub").init({
+            publish_key : "pub-c-08510f32-29e1-4fed-81ac-6a1bb40746f2",
+            subscribe_key : "sub-c-7ee3bb6c-8ee1-11e5-8f62-0619f8945a4f"
+     });
+
 
 module.exports = function(Tin) {
 
@@ -47,6 +52,15 @@ module.exports = function(Tin) {
     if(this.invitados.indexOf(accountId) != -1){
       return callback('El usuario ya ha sido invitado anteriormente');
     }
+/*    pubnub.subscribe({
+      channel: accountId,
+      message: function(m){console.log(m)}
+    });*/
+    pubnub.publish({
+        channel: accountId,
+        message: {"INVITE":"Has sido invitado al bote " + this.name},
+        callback : function(m){console.log(m)}
+    });
     this.invitados.push(accountId);
     this.save(callback);
   };
@@ -81,6 +95,11 @@ module.exports = function(Tin) {
     if( index == -1){
       return callback('El usuario no ha sido invitado a este bote');
     }
+    pubnub.publish({
+        channel: this.id,
+        message: {"JOIN":"El usuario " + accountId + " se ha unido al bote "  + this.name},
+        callback : function(m){console.log(m)}
+    });
     this.participantes = this.participantes || [];
     this.balance = this.balance || 0;
     this.participantes.push(accountId);
@@ -111,6 +130,11 @@ module.exports = function(Tin) {
     ).then(function(movement){
     }
     );
+    pubnub.publish({
+        channel: this.id,
+        message: {"JOIN":"El usuario " + accountId + " ha dejado el bote "  + this.name},
+        callback : function(m){console.log(m)}
+    });
     this.participantes = this.participantes || [];
     var index = this.participantes.indexOf(accountId);
     this.participantes.splice(index,1);
