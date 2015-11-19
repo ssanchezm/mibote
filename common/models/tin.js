@@ -1,4 +1,5 @@
 var utils = require('../../server/util');
+var app = require('../../server/server'); 
 
 module.exports = function(Tin) {
 
@@ -28,6 +29,8 @@ module.exports = function(Tin) {
   Tin.disableRemoteMethod('__unlink__movements', false);
   Tin.disableRemoteMethod('createChangeStream', true);
 
+
+
   Tin.remoteMethod('invite',{
     isStatic:false,
     description:'Invites another user to the Tin.',
@@ -36,24 +39,57 @@ module.exports = function(Tin) {
     ],
     http:{verb:'post'}
   });
-  Tin.prototype.invite=function(){
-    console.log("invite",this,arguments);
+  Tin.prototype.invite=function(accountId, callback){
+    //console.log("invite",this,arguments);
     callback = callback || utils.createCallback();
     // TODO implement me
-    return callback();
+    this.invitados = this.invitados || [];
+    if(this.invitados.indexOf(accountId) != -1){
+      return callback('El usuario ya ha sido invitado anteriormente');
+    }
+    this.invitados.push(accountId);
+    this.save(callback);
   };
+
+
 
   Tin.remoteMethod('join',{
     isStatic:false,
     description: 'Joins the Tin.',
+    accepts:[
+      {arg: 'accountId', type: 'string', description: 'The account id of the  user to invite to the Tin.',http: {source: 'query' }}
+    ],
     http: {verb: 'post'}
   });
-  Tin.prototype.join=function(){
-    console.log("join",this,arguments);
+  Tin.prototype.join=function(accountId, callback){
+    //console.log("join",this,arguments);
     callback = callback || utils.createCallback();
     // TODO implement me
-    return callback();
+    app.models.Movement.create(
+      {
+        "amount": {
+          "value": 20,
+          "currency": "EUR",
+        },
+        "description": "El usuraio " + accountId + " se ha unido al bote " + this.id,
+        "tinId": "564de9411b87dcc416ef4c67"
+      }
+    ).then(function(movement){
+    }
+    );
+    var index = this.invitados.indexOf(accountId);
+    if( index == -1){
+      return callback('El usuario no ha sido invitado a este bote');
+    }
+    this.participantes = this.participantes || [];
+    this.balance = this.balance || 0;
+    this.participantes.push(accountId);
+    this.invitados.splice(index,1);
+    this.balance = this.balance + this.amount.value;
+    this.save(callback);
   };
+
+
 
   Tin.remoteMethod('leave',{
     isStatic:false,
@@ -66,6 +102,8 @@ module.exports = function(Tin) {
     // TODO implement me
     return callback();
   };
+
+
 
   Tin.remoteMethod('disolve',{
     isStatic:false,
