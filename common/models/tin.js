@@ -57,7 +57,7 @@ module.exports = function(Tin) {
     isStatic:false,
     description: 'Joins the Tin.',
     accepts:[
-      {arg: 'accountId', type: 'string', description: 'The account id of the  user to invite to the Tin.',http: {source: 'query' }}
+      {arg: 'accountId', type: 'string', description: 'The account id of the  user to join the Tin.',http: {source: 'query' }}
     ],
     http: {verb: 'post'}
   });
