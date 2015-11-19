@@ -170,10 +170,43 @@ module.exports = function(Tin) {
     http:{verb:'post'}
   });
   Tin.prototype.disolve=function(callback){
-    console.log("disolve",this,arguments);
+    //console.log("disolve",this,arguments);
     callback = callback || utils.createCallback();
     // TODO implement me
-    return callback();
+    var bote = this;
+    this.members('', function(err, miembros){
+      var saldoARetornar = bote.balance / miembros.length;
+      for (var i = miembros.length - 1; i >= 0; i--) {
+        var miembro = miembros[i];
+        bote.members.remove(miembros[i], function(err){
+          if(err){
+            console.log('pete en disolver bote', err);
+            return callback(err);
+          }
+          else{
+            app.models.Movement.create(
+              {
+                "amount": {
+                  "value": saldoARetornar,
+                  "currency": "EUR",
+                },
+                "description": "El usuario " + miembro.id + " ha recibido una devolución por la disolución del bote " + bote.id,
+                "tinId": bote.id
+              }
+            ).then(function(movement){});
+          }
+        });
+      };
+      console.log('Se ha eliminado el bote ', bote.id);
+      pubnub.publish({
+          channel: bote.id,
+          message: {"DISOLVE":"El bote " + bote.id + " ha sido disuelto"},
+          callback : function(m){console.log(m)}
+      });
+      bote.balance = 0;
+      bote.disolved = true;
+      return bote.save(callback);
+    });
   };
 
 };
