@@ -1,0 +1,36 @@
+{
+  "name": "Account",
+  "base": "User",
+  "http": {
+    "path": "accounts"
+  },
+  "properties": {},
+  "validations": [],
+  "relations": {
+    "tins": {
+      "type": "hasAndBelongsToMany",
+      "model": "Tin"
+    }
+  },
+  "acls": [
+    {
+      "accessType": "READ",
+      "principalType": "ROLE",
+      "principalId": "$owner",
+      "permission": "ALLOW"
+    },
+    {
+      "accessType": "WRITE",
+      "principalType": "ROLE",
+      "principalId": "$owner",
+      "permission": "ALLOW"
+    },
+    {
+      "accessType": "*",
+      "principalType": "ROLE",
+      "principalId": "$owner",
+      "permission": "ALLOW"
+    }
+  ],
+  "methods": {}
+}

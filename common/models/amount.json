@@ -1,0 +1,19 @@
+{
+  "name": "Amount",
+  "base": "Model",
+  "idInjection": false,
+  "properties": {
+    "value": {
+      "type": "number",
+      "required": true
+    },
+    "currency": {
+      "type": "string",
+      "required": true
+    }
+  },
+  "validations": [],
+  "relations": {},
+  "acls": [],
+  "methods": {}
+}
