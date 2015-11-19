@@ -11,7 +11,7 @@
   "properties": {
     "amount": {
       "type": "Amount",
-      "required": true
+      "required": false
     },
     "description": {
       "type": "string",

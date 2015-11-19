@@ -106,13 +106,15 @@ module.exports = function(Tin) {
     app.models.Movement.create(
       {
         "description": "El usuraio " + accountId + " ha dejado el bote " + this.id,
-        "tinId": "564de9411b87dcc416ef4c67"
+        "tinId": this.id
       }
     ).then(function(movement){
     }
     );
-
-    return callback();
+    this.participantes = this.participantes || [];
+    var index = this.participantes.indexOf(accountId);
+    this.participantes.splice(index,1);
+    this.save(callback);
   };
 
 
