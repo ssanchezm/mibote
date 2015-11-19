@@ -71,8 +71,8 @@ module.exports = function(Tin) {
           "value": 20,
           "currency": "EUR",
         },
-        "description": "El usuraio " + accountId + " se ha unido al bote " + this.id,
-        "tinId": "564de9411b87dcc416ef4c67"
+        "description": "El usuraio " + accountId + " se ha unido al bote " + this.id + " con una aportacion de " + this.amount.value + "EUR.",
+        "tinId": this.id
       }
     ).then(function(movement){
     }
@@ -94,12 +94,24 @@ module.exports = function(Tin) {
   Tin.remoteMethod('leave',{
     isStatic:false,
     description:'Leaves the Tin.',
+    accepts:[
+      {arg: 'accountId', type: 'string', description: 'The account id of the  user to leave the Tin.',http: {source: 'query' }}
+    ],
     http:{verb:'post'}
   });
-  Tin.prototype.leave=function(){
-    console.log("leave",this,arguments);
+  Tin.prototype.leave=function(accountId, callback){
+    //console.log("leave",this,arguments);
     callback = callback || utils.createCallback();
     // TODO implement me
+    app.models.Movement.create(
+      {
+        "description": "El usuraio " + accountId + " ha dejado el bote " + this.id,
+        "tinId": "564de9411b87dcc416ef4c67"
+      }
+    ).then(function(movement){
+    }
+    );
+
     return callback();
   };
 
