@@ -4,6 +4,7 @@ var pubnub = require("pubnub").init({
             publish_key : "pub-c-08510f32-29e1-4fed-81ac-6a1bb40746f2",
             subscribe_key : "sub-c-7ee3bb6c-8ee1-11e5-8f62-0619f8945a4f"
      });
+var Account = utils.getModel('Account');
 
 
 module.exports = function(Tin) {
@@ -33,7 +34,6 @@ module.exports = function(Tin) {
   Tin.disableRemoteMethod('__link__movements', false);
   Tin.disableRemoteMethod('__unlink__movements', false);
   Tin.disableRemoteMethod('createChangeStream', true);
-
 
 
   Tin.remoteMethod('invite',{
@@ -100,12 +100,23 @@ module.exports = function(Tin) {
         message: {"JOIN":"El usuario " + accountId + " se ha unido al bote "  + this.name},
         callback : function(m){console.log(m)}
     });
-    this.participantes = this.participantes || [];
+
     this.balance = this.balance || 0;
-    this.participantes.push(accountId);
     this.invitados.splice(index,1);
     this.balance = this.balance + this.amount.value;
-    this.save(callback);
+    var self = this;
+    Account.findById(accountId,function(err,account){
+      console.log('account', account);
+      return self.members.add(account,function(err){
+        if (err){
+          console.log('pete creacion de miembro',err);
+          return callback(err);
+        } else {
+          console.log('ok creacion de miembro');
+          return self.save(callback);        
+        }
+      });
+    });
   };
 
 
@@ -135,10 +146,20 @@ module.exports = function(Tin) {
         message: {"JOIN":"El usuario " + accountId + " ha dejado el bote "  + this.name},
         callback : function(m){console.log(m)}
     });
-    this.participantes = this.participantes || [];
-    var index = this.participantes.indexOf(accountId);
-    this.participantes.splice(index,1);
-    this.save(callback);
+
+    var self = this;
+    Account.findById(accountId,function(err,account){
+      return self.members.remove(account,function(err){
+        if (err){
+          console.log('pete eliminacion de miembro',err);
+          return callback(err);
+        } else {
+          console.log('ok eliminación de miembro');
+          return self.save(callback);        
+        }
+      });
+    });
+
   };
 
 

@@ -1,3 +1,5 @@
+var loopback = require('loopback');
+
 module.exports={
   createCallback:function(){
     var callback;
@@ -9,5 +11,9 @@ module.exports={
     });
     callback.promise = promise;
     return cb;
+  },
+  getModel:function(modelName){
+
+    return loopback.getModel(modelName);
   }
 };
