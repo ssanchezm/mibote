@@ -241,6 +241,9 @@ module.exports = function(Tin) {
     callback = callback || utils.createCallback();
     // TODO implement me
     var bote = this; 
+
+
+
     if(amount < bote.balance){
       bote.balance = bote.balance - amount;
       bote.movements.create(
@@ -249,7 +252,8 @@ module.exports = function(Tin) {
             "value": amount,
             "currency": "EUR",
           },
-          "description": "El usuario " + accountId + " ha realizado el siguiente pago: " + description,
+          "description": "Se ha realizado el siguiente pago de " + amount + ": " + description,
+          "accountId": accountId,
           "tinId": this.id
         },
         function(err, movement){
@@ -260,7 +264,7 @@ module.exports = function(Tin) {
 
       pubnub.publish({
           channel: bote.id,
-          message: {"PAYMENT":"El usuario " + accountId + " ha realizado un pago de " + amount + " - " + description},
+          message: {"PAYMENT":"Se ha realizado un pago de " + amount + " - " + description},
           callback : function(m){console.log(m)}
       });
       return bote.save(callback);
